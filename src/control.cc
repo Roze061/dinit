@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <climits>
+#include <cassert>
 
 #include "dinit-env.h"
 #include "control.h"
@@ -1216,6 +1217,7 @@ bool control_conn_t::send_data() noexcept
         return true;
     }
     
+    assert(!outbuf.empty());
     vector<char> & pkt = outbuf.front();
     char *data = pkt.data();
     int written = bp_sys::write(iob.get_watched_fd(), data + outpkt_index, pkt.size() - outpkt_index);

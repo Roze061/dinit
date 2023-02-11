@@ -7,6 +7,7 @@
 #include <map>
 #include <limits>
 #include <cstddef>
+#include <cassert>
 
 #include <unistd.h>
 
@@ -48,12 +49,21 @@ class control_conn_watcher : public eventloop_t::bidi_fd_watcher_impl<control_co
 {
     inline rearm receive_event(eventloop_t &loop, int fd, int flags) noexcept
     {
+        assert(!deregistered);
+        // If we received in event, watch for in events must be enabled;
+        // If we received out event, watch for out events must be enabled
+        assert((flags & dasynq::IN_EVENTS) == 0 || (watch_flags & dasynq::IN_EVENTS) != 0);
+        assert((flags & dasynq::OUT_EVENTS) == 0 || (watch_flags & dasynq::OUT_EVENTS) != 0);
+
         return control_conn_cb(&loop, this, flags);
     }
 
     eventloop_t * event_loop;
 
     public:
+    int watch_flags = dasynq::IN_EVENTS;
+    bool deregistered = false;
+
     control_conn_watcher(eventloop_t & event_loop_p) : event_loop(&event_loop_p)
     {
         // constructor
@@ -74,7 +84,14 @@ class control_conn_watcher : public eventloop_t::bidi_fd_watcher_impl<control_co
 
     void set_watches(int flags)
     {
+        watch_flags = flags;
         eventloop_t::bidi_fd_watcher::set_watches(*event_loop, flags);
+    }
+
+    void deregister(eventloop_t &event_loop_p)
+    {
+        deregistered = true;
+        eventloop_t::bidi_fd_watcher::deregister(event_loop_p);
     }
 };
 
